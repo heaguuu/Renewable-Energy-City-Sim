@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>가상 환경도시 시뮬레이터</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      background: #fff;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 { margin-bottom: 30px; }
+
+    .slider-container {
+      max-width: 400px;
+      margin: 20px auto;
+      text-align: left;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      font-size: medium;
+      text-align: center;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    input[type=range] {
+      width: 75%;
+    }
+
+    .value {
+      width: 50px;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 30px;
+    }
+
+    button:hover { background-color: #0056b3; }
+
+    .result-box {
+      max-width: 500px;
+      margin: 0 auto 30px auto;
+      padding: 15px;
+      border-radius: 8px;
+      transition: background-color 0.5s;
+      color: #333;
+    }
+
+    .graph-container {
+      display: flex;
+      justify-content: space-around;
+      max-width: 500px;
+      margin: 0 auto;
+      align-items: flex-end;
+      height: 230px;
+    }
+
+    .bar-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .bar {
+      width: 80px;
+      background-color: #1ce168;
+      border-radius: 4px 4px 0 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      position: relative;
+      transition: height 0.5s;
+    }
+
+    .bar span {
+      position: absolute;
+      top: -20px;
+      font-size: 14px;
+      color: #333;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .label {
+      margin-top: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      color: #333;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* 등급별 배경색 */
+    .grade-A { background-color: #d6f5d6; }
+    .grade-B { background-color: #d6f0ff; }
+    .grade-C { background-color: #ffe7c2; }
+    .grade-D { background-color: #f0d0d0; }
+  </style>
+</head>
+<body>
+  <h1>가상 환경도시 시뮬레이터</h1>
+
+  <div class="slider-container">
+    <div class="slider-row">
+      <label>풍력 발전</label>
+      <input type="range" id="wind" min="0" max="100" value="25" oninput="updateValue('wind')">
+      <span class="value" id="windVal">25%</span>
+    </div>
+
+    <div class="slider-row">
+      <label>수력 발전</label>
+      <input type="range" id="hydro" min="0" max="100" value="25" oninput="updateValue('hydro')">
+      <span class="value" id="hydroVal">25%</span>
+    </div>
+
+    <div class="slider-row">
+      <label>태양광 발전</label>
+      <input type="range" id="solar" min="0" max="100" value="25" oninput="updateValue('solar')">
+      <span class="value" id="solarVal">25%</span>
+    </div>
+
+    <div class="slider-row">
+      <label>바이오 에너지</label>
+      <input type="range" id="bio" min="0" max="100" value="25" oninput="updateValue('bio')">
+      <span class="value" id="bioVal">25%</span>
+    </div>
+  </div>
+
+  <button onclick="calculate()">결과 계산하기</button>
+
+  <div class="result-box" id="result">
+    시뮬레이션 결과가 여기에 표시됩니다.
+  </div>
+
+  <div class="graph-container">
+    <div class="bar-group">
+      <div class="bar" id="co2Bar"><span>0%</span></div>
+      <div class="label">CO₂ 감소량</div>
+    </div>
+    <div class="bar-group">
+      <div class="bar" id="airBar"><span>0 µg/m³</span></div>
+      <div class="label">미세먼지 개선</div>
+    </div>
+    <div class="bar-group">
+      <div class="bar" id="energyBar"><span>0%</span></div>
+      <div class="label">에너지 자립률</div>
+    </div>
+  </div>
+
+  <script>
+  function updateValue(id) {
+    const val = document.getElementById(id).value;
+    document.getElementById(id + "Val").textContent = val + "%";
+  }
+
+  function calculate() {
+    const wind = Number(document.getElementById('wind').value);
+    const hydro = Number(document.getElementById('hydro').value);
+    const solar = Number(document.getElementById('solar').value);
+    const bio = Number(document.getElementById('bio').value);
+
+    // 전체 재생에너지 비중 = 4개 평균
+    const renewable = (wind + hydro + solar + bio) / 4;
+
+    // === 편향 정도 계산 ===
+    const values = [wind, hydro, solar, bio];
+    const maxVal = Math.max(...values);
+    let bias = 0;
+    if (renewable > 0) {
+      bias = (maxVal / renewable) * 100 - 100;
+    }
+
+    // 효과 계산
+    const co2Reduction = renewable * 0.9;
+    const airImprovement = renewable * 0.18;
+    const energySelf = renewable;
+
+    // 도시 점수 기본값
+    let cityScore = (co2Reduction + energySelf + airImprovement)/2.1;
+
+    // 편향에 따른 감점
+    if (bias > 90) cityScore -= 2;
+    else if (bias > 75) cityScore -= 1.5;
+    else if (bias > 50) cityScore -= 1;
+    else if (bias > 25) cityScore -= 0.5;
+
+    // 등급 계산
+    let gradeClass='', gradeText='', icon='';
+    if (cityScore >= 80) { gradeClass='grade-A'; gradeText='A'; icon='🌿'; }
+    else if (cityScore >= 60) { gradeClass='grade-B'; gradeText='B'; icon='🏙️'; }
+    else if (cityScore >= 40) { gradeClass='grade-C'; gradeText='C'; icon='🌇'; }
+    else { gradeClass='grade-D'; gradeText='D'; icon='⚠️'; }
+
+    // 결과 표시
+    const resultBox = document.getElementById('result');
+    resultBox.className = `result-box ${gradeClass}`;
+    resultBox.innerHTML = `
+      <strong>전체 재생에너지 비중:</strong> ${renewable.toFixed(1)}%<br>
+      <strong>편향 정도:</strong> ${bias.toFixed(1)}%<br>
+      <strong>CO₂ 감소량:</strong> ${co2Reduction.toFixed(1)}%<br>
+      <strong>미세먼지 개선:</strong> +${airImprovement.toFixed(1)} µg/m³<br>
+      <strong>에너지 자립률:</strong> ${energySelf.toFixed(1)}%<br><br>
+      <strong>🏙️ 도시 점수:</strong> ${cityScore.toFixed(1)}점<br>
+      <strong>${icon} 등급:</strong> ${gradeText}
+    `;
+
+    // 그래프 반영
+    document.getElementById('co2Bar').style.height = `${co2Reduction/100*200}px`;
+    document.getElementById('co2Bar').querySelector('span').textContent = `${co2Reduction.toFixed(1)}%`;
+
+    document.getElementById('airBar').style.height = `${airImprovement/18*200}px`;
+    document.getElementById('airBar').querySelector('span').textContent = `${airImprovement.toFixed(1)}µg/m³`;
+
+    document.getElementById('energyBar').style.height = `${energySelf/100*200}px`;
+    document.getElementById('energyBar').querySelector('span').textContent = `${energySelf.toFixed(1)}%`;
+  }
+  </script>
+
+</body>
+</html>
